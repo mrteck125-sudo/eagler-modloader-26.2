@@ -6,6 +6,9 @@ Usage: patch-workspace.py WORKSPACE
 - glfwGetMouseButton(): added to Eaglercraft's GLFW stand-in.
 - Reader/BufferedReader.transferTo (donors in loader/teavm-compat), Array.setInt and the other primitive
   setters, and Files.newDirectoryStream(dir, glob), added to Eaglercraft's donors for Array and Files.
+- Field.getGenericType (Eaglercraft's donor): asks the loader's table of generic field types first,
+  through a hook the loader registers at startup, so Gson and other libraries see List<Foo> rather than
+  List (a map of settings objects otherwise loaded as plain maps, and broke with ClassCastException).
 - ServerFunctionLibrary: mods' datapack functions (.mcfunction) are compiled right away instead of as
   async tasks the loader then waits on, which the browser's single-threaded server can't do (vanilla
   ships no functions, so Eaglercraft never hit this); a function that fails to compile is logged.
@@ -52,6 +55,17 @@ def main():
                         ("Short", "short", "Short"), ("Int", "int", "Integer"), ("Long", "long", "Long"),
                         ("Float", "float", "Float"), ("Double", "double", "Double")])
     append_to_class(os.path.join(inject, "ArrayInject.java"), setters, "public static void setInt(", "Array setters")
+    patch(os.path.join(inject, "FieldInject.java"), """	public Type getGenericType() {
+		return (Type) (Object) getType();
+	}""", """	public Type getGenericType() {
+		// eagler-modloader: the loader's table of generic field types (EmlHooks registers it)
+		java.util.function.Function<Object, Object> r = net.lax1dude.eaglercraft.v1_8.teavmcompat.EmlGenericTypes.resolver;
+		if (r != null) {
+			Object t = r.apply(this);
+			if (t instanceof Type) return (Type) t;
+		}
+		return (Type) (Object) getType();
+	}""", "Field.getGenericType hook")
     append_to_class(os.path.join(inject, "FilesInject.java"),
         "\n\tpublic static java.nio.file.DirectoryStream<Path> newDirectoryStream(Path dir, String glob) throws IOException { // added by eagler-modloader\n"
         "\t\treturn net.lax1dude.eaglercraft.v1_8.teavmcompat.EmlNio.newDirectoryStream(dir, glob);\n\t}\n",

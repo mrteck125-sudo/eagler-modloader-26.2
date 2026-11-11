@@ -33,6 +33,7 @@ public final class EmlHooks {
 		if (common) return;
 		common = true;
 		if (reflectionRoots) reflectionRoots();
+		EmlReflect.registerHook();
 		System.out.println("[eagler-modloader] " + FabricLoaderImpl.INSTANCE.containers().size() + " built-in mods (Fabric Loader " + FabricLoaderImpl.VERSION + ")");
 		runMain();
 	}

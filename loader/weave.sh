@@ -47,7 +47,8 @@ public final class GeneratedMods {
 }
 EOF
 javac --release 21 -nowarn -proc:none -cp "$DEPS" -d "$IM/classes" \
-  $(find "$REPO/loader/internal-mod/src" "$REPO/loader/runtime/src" "$IM/stub" -name '*.java')
+  $(find "$REPO/loader/internal-mod/src" "$REPO/loader/runtime/src" "$IM/stub" -name '*.java') \
+  "$REPO/loader/teavm-compat/java/net/lax1dude/eaglercraft/v1_8/teavmcompat/EmlGenericTypes.java"
 (cd "$IM/classes" && rm -rf net eaglermodloader/runtime && cp -r "$REPO/loader/internal-mod/resources/." . && jar --create --file "$RUN/mods/eaglermodloader.jar" .)
 ls -la "$RUN/mods"
 python3 "$REPO/loader/merge-assets.py" "$WS/game/src/main/resources" "$RUN"/mods/*.jar
@@ -178,8 +179,11 @@ allprojects {
         def srcs = []
         new File("$REPO/loader/runtime/src").eachFileRecurse { if (it.name.endsWith(".java")) srcs << it.absolutePath }
         srcs << "$WORK/gen/eaglermodloader/runtime/GeneratedMods.java"
+        // compiled against, but the browser uses teavm-compat's copy (see EmlGenericTypes)
+        srcs << "$REPO/loader/teavm-compat/java/net/lax1dude/eaglercraft/v1_8/teavmcompat/EmlGenericTypes.java"
         run(["javac", "--release", "24", "-nowarn", "-proc:none",
           "-cp", classes.absolutePath + File.pathSeparator + cp, "-d", classes.absolutePath] + srcs, "runtime-javac.log")
+        new File(classes, "net/lax1dude/eaglercraft/v1_8/teavmcompat/EmlGenericTypes.class").delete()
         println("[eagler-modloader] mods woven into " + classes)
       }
     }

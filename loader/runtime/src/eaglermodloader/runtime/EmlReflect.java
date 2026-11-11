@@ -15,8 +15,26 @@ public final class EmlReflect {
 	}
 
 	public static Type getGenericType(Field f) {
-		Type t = GeneratedMods.genericFieldType(f.getDeclaringClass().getName() + "#" + f.getName());
+		Type t = lookup(f);
 		return t != null ? t : f.getType();
+	}
+
+	/** The field's generic type from the build-time table, or null. */
+	public static Type lookup(Field f) {
+		return GeneratedMods.genericFieldType(f.getDeclaringClass().getName() + "#" + f.getName());
+	}
+
+	/**
+	 * Lets every Field.getGenericType() call use the table, including from libraries like Gson that the
+	 * build doesn't rewrite (Eaglercraft's Field.getGenericType asks this hook; see patch-workspace.py).
+	 */
+	static void registerHook() {
+		net.lax1dude.eaglercraft.v1_8.teavmcompat.EmlGenericTypes.resolver = new java.util.function.Function<Object, Object>() {
+			@Override
+			public Object apply(Object f) {
+				return f instanceof Field ? lookup((Field) f) : null;
+			}
+		};
 	}
 
 	/** A parameterized type such as EnumConfigOption&lt;Sorting&gt;. */
