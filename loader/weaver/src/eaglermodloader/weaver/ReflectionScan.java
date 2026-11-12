@@ -41,6 +41,8 @@ import org.objectweb.asm.tree.TypeInsnNode;
  * Eaglercraft's TeaVM plugin reads, so all their fields stay readable and writable. Their fields with
  * generic types are listed too ("G class#field signature") for GeneratedMods.genericFieldType(), and
  * mods' Field.getGenericType() calls are pointed at EmlReflect.getGenericType(), which uses that table.
+ * Mods' Class/ClassLoader.getResourceAsStream() calls are pointed at EmlResources, which also finds the
+ * mods' own files.
  */
 final class ReflectionScan {
 	private ReflectionScan() {
@@ -60,7 +62,7 @@ final class ReflectionScan {
 			s.filter(p -> p.toString().endsWith(".class")).forEach(files::add);
 		}
 		Set<String> reflected = new TreeSet<>();
-		int rewired = 0;
+		int rewired = 0, resources = 0;
 		for (Path p : files) {
 			String name = classes.relativize(p).toString().replace('\\', '/');
 			name = name.substring(0, name.length() - 6);
@@ -83,6 +85,16 @@ final class ReflectionScan {
 							mi.itf = false;
 							changed = true;
 							rewired++;
+						}
+						// mods' own files: no class path in the browser (see EmlResources)
+						if (mi.name.equals("getResourceAsStream") && mi.desc.equals("(Ljava/lang/String;)Ljava/io/InputStream;")
+								&& (mi.owner.equals("java/lang/Class") || mi.owner.equals("java/lang/ClassLoader"))) {
+							mi.desc = "(L" + mi.owner + ";Ljava/lang/String;)Ljava/io/InputStream;";
+							mi.setOpcode(Opcodes.INVOKESTATIC);
+							mi.owner = "eaglermodloader/runtime/EmlResources";
+							mi.itf = false;
+							changed = true;
+							resources++;
 						}
 					} else if (in instanceof LdcInsnNode ldc && ldc.cst instanceof Type t && t.getSort() == Type.OBJECT) {
 						named.add(t.getInternalName());
@@ -156,7 +168,7 @@ final class ReflectionScan {
 		for (String c : JDK_COLLECTIONS) out.append("C ").append(c).append('\n');
 		Files.write(classes.resolve("eml-reflect.txt"), out.toString().getBytes(StandardCharsets.UTF_8));
 		System.out.println("[compat] reflection: " + reflected.size() + " classes readable by reflection, " + generic
-				+ " generic field types, " + rewired + " getGenericType calls rewired");
+				+ " generic field types, " + rewired + " getGenericType calls rewired, " + resources + " getResourceAsStream calls pointed at the mods' files");
 	}
 
 	private static boolean isGame(String name) {
