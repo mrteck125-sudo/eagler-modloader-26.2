@@ -1,9 +1,15 @@
 package eaglermodloader.runtime;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 /**
  * Reflection help for mods (see loader/weaver ReflectionScan). The browser build has no generic types,
@@ -35,6 +41,82 @@ public final class EmlReflect {
 				return f instanceof Field ? lookup((Field) f) : null;
 			}
 		};
+		net.lax1dude.eaglercraft.v1_8.teavmcompat.EmlGenericTypes.classResolver = new java.util.function.BiFunction<Object, Integer, Object>() {
+			@Override
+			public Object apply(Object c, Integer kind) {
+				return c instanceof Class<?> cls ? classTypes(cls, kind.intValue()) : null;
+			}
+		};
+	}
+
+	private static final Map<Class<?>, TypeVariable<?>[]> VARS = new HashMap<>();
+
+	/**
+	 * The JDK's own collections, which the browser build has no generic signatures for: a List or
+	 * HashSet has one type parameter (E), a Map class two (K, V), each passed straight on to its
+	 * superclass and its collection interfaces, as in the JDK. That's how Gson finds that a
+	 * LinkedHashMap&lt;String, Foo&gt; field holds Foo values. Other classes: null (Eaglercraft's raw answer).
+	 */
+	static Object classTypes(Class<?> c, int kind) {
+		int n = arity(c);
+		if (n == 0) return null;
+		TypeVariable<?>[] vars = vars(c, n);
+		switch (kind) {
+		case 0: {
+			Class<?> s = c.getSuperclass();
+			return s != null && arity(s) == n ? new Parameterized(s, vars) : null;
+		}
+		case 1: {
+			Class<?>[] is = c.getInterfaces();
+			Type[] out = new Type[is.length];
+			for (int i = 0; i < is.length; i++) out[i] = arity(is[i]) == n ? new Parameterized(is[i], vars) : is[i];
+			return out;
+		}
+		case 2: {
+			TypeVariable<?>[] out = new TypeVariable<?>[n];
+			System.arraycopy(vars, 0, out, 0, n);
+			return out;
+		}
+		default:
+			return null;
+		}
+	}
+
+	private static int arity(Class<?> c) {
+		String n = c.getName();
+		if (!n.startsWith("java.util.") || c == Properties.class) return 0;
+		if (Map.class.isAssignableFrom(c)) return 2;
+		if (Iterable.class.isAssignableFrom(c)) return 1;
+		return 0;
+	}
+
+	private static synchronized TypeVariable<?>[] vars(Class<?> c, int n) {
+		TypeVariable<?>[] v = VARS.get(c);
+		if (v == null) {
+			v = n == 2 ? new TypeVariable<?>[] { new Var(c, "K"), new Var(c, "V") } : new TypeVariable<?>[] { new Var(c, "E") };
+			VARS.put(c, v);
+		}
+		return v;
+	}
+
+	/** A type parameter of a JDK collection class (see classTypes). */
+	static final class Var implements TypeVariable<Class<?>> {
+		private final Class<?> owner;
+		private final String name;
+
+		Var(Class<?> owner, String name) {
+			this.owner = owner;
+			this.name = name;
+		}
+
+		@Override public Type[] getBounds() { return new Type[] { Object.class }; }
+		@Override public Class<?> getGenericDeclaration() { return owner; }
+		@Override public String getName() { return name; }
+		@Override public AnnotatedType[] getAnnotatedBounds() { return new AnnotatedType[0]; }
+		@Override public <T extends Annotation> T getAnnotation(Class<T> a) { return null; }
+		@Override public Annotation[] getAnnotations() { return new Annotation[0]; }
+		@Override public Annotation[] getDeclaredAnnotations() { return new Annotation[0]; }
+		@Override public String toString() { return name; }
 	}
 
 	/** A parameterized type such as EnumConfigOption&lt;Sorting&gt;. */
