@@ -15,7 +15,7 @@ on:
         type: boolean
         default: true
       inspect:
-        description: "Disassemble mod classes whose name contains this (optional, for debugging)"
+        description: "Disassemble mod classes whose name matches this regex, or that contain the text after 'str:' (optional, for debugging)"
         required: false
 
 env:
@@ -57,7 +57,11 @@ jobs:
           mkdir -p inspect && cd inspect
           for j in ../mods/*.jar; do unzip -o -q "$j" '*.class' 'META-INF/jars/*' 2>/dev/null || true; done
           for j in META-INF/jars/*.jar; do [ -f "$j" ] && unzip -o -q "$j" '*.class' 2>/dev/null || true; done
-          find . -name '*.class' | grep -i "$PATTERN" | head -8 | while read c; do echo "===== $c"; javap -c -p "$c" | head -400; done
+          if [ "${PATTERN#str:}" != "$PATTERN" ]; then
+            grep -rlaF --include='*.class' "${PATTERN#str:}" . | head -6
+          else
+            find . -name '*.class' | grep -iE "$PATTERN" | head -8
+          fi | while read c; do echo "===== $c"; javap -c -p "$c" | head -1500; done
       - name: Download the Eaglercraft 26.2 workspace
         if: ${{ inputs.check }}
         run: |

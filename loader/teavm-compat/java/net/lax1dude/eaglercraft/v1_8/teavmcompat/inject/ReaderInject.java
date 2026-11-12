@@ -22,4 +22,8 @@ public abstract class ReaderInject {
 		}
 		return total;
 	}
+
+	public static java.io.Reader nullReader() {
+		return net.lax1dude.eaglercraft.v1_8.teavmcompat.EmlNullStreams.reader();
+	}
 }

@@ -4,7 +4,8 @@
 Usage: patch-workspace.py WORKSPACE
 - ServiceLoader.findFirst(): registers the donor in loader/teavm-compat with Eaglercraft's JdkMethodInjector.
 - glfwGetMouseButton(): added to Eaglercraft's GLFW stand-in.
-- Reader/BufferedReader.transferTo (donors in loader/teavm-compat), Array.setInt and the other primitive
+- Reader/BufferedReader.transferTo and Writer.nullWriter (and nullReader, nullInputStream,
+  nullOutputStream) (donors in loader/teavm-compat), Array.setInt and the other primitive
   setters, and Files.newDirectoryStream(dir, glob), added to Eaglercraft's donors for Array and Files.
 - Field.getGenericType and Class.getGenericSuperclass/getGenericInterfaces/getTypeParameters
   (Eaglercraft's donors): ask the loader first, through a hook it registers at startup, so Gson and
@@ -46,7 +47,10 @@ def main():
     anchor = '\t\t{ "Base64Inject", "java.util.Base64", false },\n'
     patch(inj, anchor, anchor + '\t\t{ "ServiceLoaderInject", "java.util.ServiceLoader", false },\n'
           '\t\t{ "ReaderInject", "java.io.Reader", false },\n'
-          '\t\t{ "BufferedReaderInject", "java.io.BufferedReader", false },\n', "ServiceLoader and Reader donors")
+          '\t\t{ "BufferedReaderInject", "java.io.BufferedReader", false },\n'
+          '\t\t{ "WriterInject", "java.io.Writer", false },\n'
+          '\t\t{ "InputStreamInject", "java.io.InputStream", false },\n'
+          '\t\t{ "OutputStreamInject", "java.io.OutputStream", false },\n', "ServiceLoader and java.io donors")
 
     inject = os.path.join(ws, "teavm-compat/src/main/java/net/lax1dude/eaglercraft/v1_8/teavmcompat/inject")
     setters = "".join(
