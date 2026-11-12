@@ -90,7 +90,8 @@ public final class EmlReflect {
 		return 0;
 	}
 
-	private static synchronized TypeVariable<?>[] vars(Class<?> c, int n) {
+	// not synchronized: these hooks run inside Class methods, where the browser build can't pause on a lock
+	private static TypeVariable<?>[] vars(Class<?> c, int n) {
 		TypeVariable<?>[] v = VARS.get(c);
 		if (v == null) {
 			v = n == 2 ? new TypeVariable<?>[] { new Var(c, "K"), new Var(c, "V") } : new TypeVariable<?>[] { new Var(c, "E") };
