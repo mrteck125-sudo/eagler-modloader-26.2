@@ -4,20 +4,4 @@
 
 logical-zoom             # Zoom
 gamma-utils              # Fullbright
-clear-fog                # No Fog
-block-outline-customizer # Block Outline
-fpsdisplay               # FPS
-cps-plus                 # CPS
-clean-keystrokes         # Keystrokes
-gui-clock                # Clock
-gui-compass              # Coordinates (with facing direction)
-ukus-armor-hud           # Armor Status
-toggle-sprint-display    # Sprint Status
-appleskin                # Saturation Bar
-tnt-timer                # TNT Countdown
-autogg-fabric            # AutoGG
-nopeeking                # Password Hider
-emoji-type               # Emoji Type
-simple-item-editor       # Item Editor
-replaymod                # Replay Mod (record and replay)
 sodium                   # Sodium (performance)
