@@ -222,6 +222,21 @@ public final class Weave {
 					}
 				}
 			}
+			// mixin configs a mod registers from its own code (ReplayMod does) aren't in its metadata:
+			// any top-level .json file with a "package" and a list of mixins counts
+			for (Path root : m.getRootPaths()) {
+				try (java.util.stream.Stream<Path> files = Files.list(root)) {
+					for (Path f : (Iterable<Path>) files::iterator) {
+						String n = f.getFileName().toString();
+						if (!n.endsWith(".json") || ret.containsKey(n) || !Files.isRegularFile(f)) continue;
+						String txt = new String(Files.readAllBytes(f), StandardCharsets.UTF_8);
+						Matcher pm = PACKAGE.matcher(txt);
+						if (pm.find() && (txt.contains("\"mixins\"") || txt.contains("\"client\""))) ret.put(n, pm.group(1));
+					}
+				} catch (IOException | RuntimeException e) {
+					// ignore: those configs just can't be mapped
+				}
+			}
 		}
 		return ret;
 	}
