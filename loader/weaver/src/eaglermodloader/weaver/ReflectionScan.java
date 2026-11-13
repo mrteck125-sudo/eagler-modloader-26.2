@@ -153,12 +153,13 @@ final class ReflectionScan {
 		}
 		StringBuilder out = new StringBuilder();
 		int generic = 0;
+		Set<String> byName = new TreeSet<>(); // non-public classes the generic types name: loaded with Class.forName
 		for (String c : reflected) {
 			ClassNode cn = read(classes, c, cache);
 			if (cn == null) continue;
 			out.append("C ").append(c.replace('/', '.')).append('\n');
 			for (FieldNode f : cn.fields) {
-				if (f.signature == null || !f.signature.startsWith("L") || !allPublic(classes, f.signature, cache)) continue;
+				if (f.signature == null || !f.signature.startsWith("L") || !nameable(classes, f.signature, cache, reflected, byName)) continue;
 				out.append("G ").append(c.replace('/', '.')).append('#').append(f.name).append(' ').append(f.signature).append('\n');
 				generic++;
 			}
@@ -166,6 +167,7 @@ final class ReflectionScan {
 		// Gson creates fields declared as a concrete collection (LinkedHashMap, ArrayList, ...) through
 		// their no-argument constructor by reflection, so those constructors must exist too
 		for (String c : JDK_COLLECTIONS) out.append("C ").append(c).append('\n');
+		for (String c : byName) out.append("N ").append(c.replace('/', '.')).append('\n');
 		Files.write(classes.resolve("eml-reflect.txt"), out.toString().getBytes(StandardCharsets.UTF_8));
 		System.out.println("[compat] reflection: " + reflected.size() + " classes readable by reflection, " + generic
 				+ " generic field types, " + rewired + " getGenericType calls rewired, " + resources + " getResourceAsStream calls pointed at the mods' files");
@@ -188,8 +190,13 @@ final class ReflectionScan {
 		return cn;
 	}
 
-	/** True if every class named in the signature can be named from generated code (public, or from the JDK). */
-	private static boolean allPublic(Path classes, String sig, Map<String, ClassNode> cache) throws IOException {
+	/**
+	 * True if generated code can name every class in the signature: public, from the JDK, or reflected
+	 * (then it's loaded by name, and added to byName).
+	 */
+	private static boolean nameable(Path classes, String sig, Map<String, ClassNode> cache, Set<String> reflected, Set<String> byName)
+			throws IOException {
+		Set<String> need = new TreeSet<>();
 		for (int i = 0; i < sig.length(); i++) {
 			boolean typeStart = i == 0 || "<;+-[".indexOf(sig.charAt(i - 1)) >= 0;
 			if (!typeStart) continue;
@@ -201,8 +208,13 @@ final class ReflectionScan {
 			String n = sig.substring(i + 1, end);
 			if (n.startsWith("java/")) continue;
 			ClassNode cn = read(classes, n, cache);
-			if (cn == null || (cn.access & Opcodes.ACC_PUBLIC) == 0 || n.contains("$") && !nestedPublic(cn, n)) return false;
+			if (cn == null) return false;
+			boolean pub = (cn.access & Opcodes.ACC_PUBLIC) != 0 && (!n.contains("$") || nestedPublic(cn, n));
+			if (pub) continue;
+			if (!reflected.contains(n)) return false;
+			need.add(n);
 		}
+		byName.addAll(need);
 		return true;
 	}
 

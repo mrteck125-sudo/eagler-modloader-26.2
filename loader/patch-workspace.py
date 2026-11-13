@@ -4,6 +4,8 @@
 Usage: patch-workspace.py WORKSPACE
 - ServiceLoader.findFirst(): registers the donor in loader/teavm-compat with Eaglercraft's JdkMethodInjector.
 - glfwGetMouseButton(): added to Eaglercraft's GLFW stand-in.
+- Arrays.copyOfRange (replace-donor in loader/teavm-compat): pads with zeros past the end, as the JDK
+  does, instead of throwing (SnakeYAML relies on it).
 - Reader/BufferedReader.transferTo and Writer.nullWriter (and nullReader, nullInputStream,
   nullOutputStream) (donors in loader/teavm-compat), Array.setInt and the other primitive
   setters, and Files.newDirectoryStream(dir, glob), added to Eaglercraft's donors for Array and Files.
@@ -51,6 +53,10 @@ def main():
           '\t\t{ "WriterInject", "java.io.Writer", false },\n'
           '\t\t{ "InputStreamInject", "java.io.InputStream", false },\n'
           '\t\t{ "OutputStreamInject", "java.io.OutputStream", false },\n', "ServiceLoader and java.io donors")
+
+    anchor = '\t\t{ "ConcurrentMapInject", "java.util.concurrent.ConcurrentMap" },\n'
+    patch(inj, anchor, anchor + '\t\t{ "ArraysInject", "java.util.Arrays" }, // eagler-modloader: copyOfRange past the end\n',
+          "Arrays.copyOfRange fix")
 
     inject = os.path.join(ws, "teavm-compat/src/main/java/net/lax1dude/eaglercraft/v1_8/teavmcompat/inject")
     setters = "".join(

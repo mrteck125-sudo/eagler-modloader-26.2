@@ -25,6 +25,15 @@ public final class EmlReflect {
 		return t != null ? t : f.getType();
 	}
 
+	/** A non-public mod class named in the table (loaded by name; it's readable by reflection), or Object. */
+	public static Class<?> named(String name) {
+		try {
+			return Class.forName(name);
+		} catch (ClassNotFoundException | RuntimeException | LinkageError e) {
+			return Object.class;
+		}
+	}
+
 	/** The field's generic type from the build-time table, or null. */
 	public static Type lookup(Field f) {
 		return GeneratedMods.genericFieldType(f.getDeclaringClass().getName() + "#" + f.getName());

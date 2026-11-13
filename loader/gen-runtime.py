@@ -68,10 +68,13 @@ KNOWN = {
     "preLaunch": "net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint",
 }
 
-def generic_expr(sig):
-    """Java expression for a field's generic signature, e.g. Lpkg/Option<Lpkg/Cfg$Mode;>;"""
+def generic_expr(sig, by_name=()):
+    """Java expression for a field's generic signature, e.g. Lpkg/Option<Lpkg/Cfg$Mode;>;
+    Classes in by_name (binary names) aren't public: they're loaded by name."""
     pos = [0]
     def cls(name):
+        if name.replace("/", ".") in by_name:
+            return "eaglermodloader.runtime.EmlReflect.named(%s)" % java_str(name.replace("/", "."))
         return name.replace("/", ".").replace("$", ".") + ".class"
     def parse():
         c = sig[pos[0]]
@@ -199,10 +202,12 @@ def main():
     generic = []
     rf = os.path.join(classes, "eml-reflect.txt")
     if os.path.exists(rf):
-        for line in open(rf):
+        lines_rf = open(rf).read().splitlines()
+        by_name = set(l[2:].strip() for l in lines_rf if l.startswith("N "))
+        for line in lines_rf:
             if line.startswith("G "):
                 key, sig = line[2:].strip().split(" ", 1)
-                expr = generic_expr(sig)
+                expr = generic_expr(sig, by_name)
                 if expr:
                     generic.append("\t\tcase %s: return %s;" % (java_str(key), expr))
     mod_rows = []
