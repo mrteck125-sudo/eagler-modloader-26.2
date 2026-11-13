@@ -1,7 +1,3 @@
 # Mods downloaded from Modrinth at build time (with the mods they require).
 # One project per line: the slug from its Modrinth URL (modrinth.com/mod/<slug>), or "slug@version" to pin one.
 # The newest Fabric version for Minecraft 26.2 is used. Jars you put in mods/ yourself are built in too.
-
-logical-zoom             # Zoom
-gamma-utils              # Fullbright
-sodium                   # Sodium (performance)
