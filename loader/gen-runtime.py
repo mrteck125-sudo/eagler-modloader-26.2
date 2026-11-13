@@ -68,6 +68,28 @@ KNOWN = {
     "preLaunch": "net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint",
 }
 
+def generic_methods(cases, per=150):
+    """genericFieldType's body, its switch split into helper methods (one method's code is limited to 64 KB)."""
+    if not cases:
+        return "\t\treturn null;"
+    chunks = [cases[i:i + per] for i in range(0, len(cases), per)]
+    body = ["\t\tjava.lang.reflect.Type t;"]
+    for i in range(len(chunks)):
+        body.append("\t\tif ((t = genericFieldType%d(key)) != null) return t;" % i)
+    body.append("\t\treturn null;")
+    body.append("\t}")
+    for i, chunk in enumerate(chunks):
+        body.append("")
+        body.append("\tprivate static java.lang.reflect.Type genericFieldType%d(String key) {" % i)
+        body.append("\t\tswitch (key) {")
+        body.extend(chunk)
+        body.append("\t\tdefault: return null;")
+        body.append("\t\t}")
+        if i < len(chunks) - 1:
+            body.append("\t}")
+    return "\n".join(body)
+
+
 def generic_expr(sig):
     """Java expression for a field's generic signature, e.g. Lpkg/Option<Lpkg/Cfg$Mode;>;"""
     pos = [0]
@@ -283,10 +305,7 @@ public final class GeneratedMods {
 
 	/** The generic type of a field mods read by reflection ("class#field"), or null if not known. */
 	public static java.lang.reflect.Type genericFieldType(String key) {
-		switch (key) {
 %s
-		default: return null;
-		}
 	}
 
 	/** A file packed into the game's assets (assets.epk), or null. */
@@ -297,7 +316,7 @@ public final class GeneratedMods {
 	private GeneratedMods() {
 	}
 }
-""" % (java_str(loader_version), "\n".join(mod_rows), "\n".join(lines), "\n".join(client_lines), freeze, "\n".join(compat) or "\t\t// none", busy, "\n".join(generic))
+""" % (java_str(loader_version), "\n".join(mod_rows), "\n".join(lines), "\n".join(client_lines), freeze, "\n".join(compat) or "\t\t// none", busy, generic_methods(generic))
     os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, "w").write(src)
     print("[gen] %d mods, %d entrypoints (%d client-only)" % (len(mods), len(lines) + len(client_lines), len(client_lines)))
